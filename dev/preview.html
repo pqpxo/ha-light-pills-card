@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Light Pills Card preview</title>
+  <!--
+    Local preview without Home Assistant.
+    From the repo root: npm install, then npx serve . (or python3 -m http.server)
+    and open /dev/preview.html. Tap pills to toggle; hold for the more-info log.
+  -->
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      margin: 0;
+      padding: 24px;
+      background: #111827;
+      color: #e5e7eb;
+      font-family: Roboto, "Segoe UI", system-ui, sans-serif;
+    }
+    h1 { font-size: 18px; margin: 0 0 4px; }
+    p.hint { margin: 0 0 20px; opacity: 0.7; font-size: 14px; }
+    .grid { display: grid; gap: 22px; max-width: 460px; }
+    .label { font-size: 12px; opacity: 0.6; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.06em; }
+    #log { margin-top: 24px; font: 12px ui-monospace, monospace; opacity: 0.75; white-space: pre-wrap; }
+  </style>
+  <script type="module">
+    import * as mdi from '../node_modules/@mdi/js/mdi.js';
+
+    const toKey = (name) =>
+      'mdi' + name.replace(/^mdi:/, '').split('-').map((p) => p[0].toUpperCase() + p.slice(1)).join('');
+    const DOMAIN_ICONS = { light: 'mdi:lightbulb', switch: 'mdi:toggle-switch', fan: 'mdi:fan', input_boolean: 'mdi:toggle-switch-outline' };
+
+    // Minimal stand-ins for the Home Assistant elements the card uses
+    customElements.define('ha-card', class extends HTMLElement {
+      connectedCallback() { this.style.display = 'block'; }
+    });
+
+    customElements.define('ha-icon', class extends HTMLElement {
+      set icon(value) { this._icon = value; this._render(); }
+      get icon() { return this._icon; }
+      connectedCallback() { this._render(); }
+      _render() {
+        const path = mdi[toKey(this._icon || '')] || mdi.mdiHelpCircleOutline;
+        this.innerHTML = `<svg viewBox="0 0 24 24" style="width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);display:block;fill:currentColor"><path d="${path}"/></svg>`;
+        this.style.display = 'inline-flex';
+      }
+    });
+
+    customElements.define('ha-state-icon', class extends HTMLElement {
+      set icon(v) { this._icon = v; this._render(); }
+      set stateObj(v) { this._stateObj = v; this._render(); }
+      set hass(v) { this._hass = v; }
+      _render() {
+        const s = this._stateObj;
+        const name = this._icon || (s && s.attributes.icon) || (s && DOMAIN_ICONS[s.entity_id.split('.')[0]]) || '';
+        if (!this._inner) { this._inner = document.createElement('ha-icon'); this.appendChild(this._inner); }
+        this._inner.icon = name;
+      }
+    });
+
+    // Mock hass object with immutable state updates, like the real frontend
+    const states = {};
+    const entity = (id, name, state = 'off') =>
+      (states[id] = { entity_id: id, state, attributes: { friendly_name: name } });
+    entity('light.office_desk_lamp', 'Office desk lamp');
+    entity('light.office_ceiling', 'Office ceiling');
+    entity('light.garage_light_1', 'Garage light 1');
+    entity('light.garage_light_2', 'Garage light 2');
+    entity('light.living_room', 'Living Room');
+    entity('light.kitchen_island', 'Kitchen Island');
+    entity('light.hallway', 'Hallway');
+    entity('switch.fairy_lights', 'Fairy lights');
+    entity('light.bedside', 'Bedside');
+
+    let hass = { states: { ...states }, language: 'en' };
+    const cards = [];
+    const log = (msg) => { document.getElementById('log').textContent = msg + '\n' + document.getElementById('log').textContent; };
+
+    window.setStates = (map) => {
+      const next = { ...hass.states };
+      Object.entries(map).forEach(([id, state]) => { next[id] = { ...next[id], state }; });
+      hass = { ...hass, states: next };
+      cards.forEach((c) => (c.hass = hass));
+    };
+    window.allOff = () => window.setStates(Object.fromEntries(Object.keys(hass.states).map((id) => [id, 'off'])));
+    window.actionLog = [];
+
+    // Simulate the frontend's handling of hass-action
+    document.addEventListener('hass-action', (ev) => {
+      const { config, action } = ev.detail;
+      const actionConfig = config[`${action}_action`];
+      window.actionLog.push({ action, entity: config.entity, type: actionConfig.action });
+      log(`${action}: ${actionConfig.action} ${config.entity || ''}`);
+      if (actionConfig.action === 'toggle') {
+        window.setStates({ [config.entity]: hass.states[config.entity].state === 'on' ? 'off' : 'on' });
+      }
+    });
+
+    const CONFIGS = {
+      original: {
+        type: 'custom:light-pills-card',
+        name: 'Ceiling Lights',
+        icon: 'mdi:lightbulb-group',
+        lights: [
+          { entity: 'light.office_desk_lamp', name: 'TV', icon: 'mdi:television' },
+          { entity: 'light.office_ceiling', name: 'Sofa', icon: 'mdi:sofa' },
+          { entity: 'light.garage_light_1', name: 'Table', icon: 'mdi:table-furniture' },
+          { entity: 'light.garage_light_2', name: 'Fire', icon: 'mdi:fireplace' },
+        ],
+      },
+      long: {
+        type: 'custom:light-pills-card',
+        name: 'Downstairs',
+        icon: 'mdi:home-lightbulb-outline',
+        show_count: true,
+        lights: [
+          { entity: 'light.living_room', icon: 'mdi:sofa-outline' },
+          { entity: 'light.kitchen_island', icon: 'mdi:countertop-outline' },
+          'switch.fairy_lights',
+        ],
+      },
+      themed: {
+        type: 'custom:light-pills-card',
+        name: 'Bedroom',
+        icon: 'mdi:bed-outline',
+        expand: 'on',
+        background: '#13274a',
+        border_radius: 22,
+        pill_radius: 21,
+        pill_background: '#1f3a66',
+        pill_background_on: '#3a5a8c',
+        icon_color_on: '#7dd3fc',
+        box_shadow: 'none',
+        border: '1px solid rgba(125, 211, 252, 0.25)',
+        lights: [
+          { entity: 'light.bedside', icon: 'mdi:lamp' },
+          { entity: 'light.hallway', icon: 'mdi:wall-sconce-flat' },
+        ],
+      },
+    };
+
+    await import('../dist/light-pills-card.js');
+
+    Object.entries(CONFIGS).forEach(([id, config]) => {
+      const card = document.createElement('light-pills-card');
+      card.id = id;
+      card.setConfig(config);
+      card.hass = hass;
+      document.getElementById(`slot-${id}`).appendChild(card);
+      cards.push(card);
+    });
+    window.CONFIGS = CONFIGS;
+    window.previewReady = true;
+  </script>
+</head>
+<body>
+  <h1>Light Pills Card</h1>
+  <p class="hint">Tap a pill to toggle it, hold for more-info.</p>
+  <div class="grid">
+    <div><div class="label">Original design (expand: single)</div><div id="slot-original"></div></div>
+    <div><div class="label">Friendly names, 3 lights, show_count</div><div id="slot-long"></div></div>
+    <div><div class="label">Restyled, expand: on</div><div id="slot-themed"></div></div>
+  </div>
+  <div id="log"></div>
+</body>
+</html>

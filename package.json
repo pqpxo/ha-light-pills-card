@@ -1,0 +1,14 @@
+{
+  "name": "light-pills-card",
+  "version": "1.0.0",
+  "description": "Home Assistant Lovelace card with 2-4 light pills that expand to show their name",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "check": "node --check dist/light-pills-card.js",
+    "preview": "python3 -m http.server 8765"
+  },
+  "devDependencies": {
+    "@mdi/js": "^7.4.47"
+  }
+}

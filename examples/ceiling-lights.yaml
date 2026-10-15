@@ -1,0 +1,18 @@
+# The original button-card "Ceiling Lights" design, rebuilt with Light Pills Card.
+# Everything not listed here uses the defaults, which match the original styling.
+type: custom:light-pills-card
+name: Ceiling Lights
+image: /local/officelampbulb.png
+lights:
+  - entity: light.office_desk_lamp
+    name: TV
+    icon: mdi:television
+  - entity: light.office_ceiling
+    name: Sofa
+    icon: mdi:sofa
+  - entity: light.garage_light_1
+    name: Table
+    icon: mdi:table-furniture
+  - entity: light.garage_light_2
+    name: Fire
+    icon: mdi:fireplace

@@ -1,0 +1,56 @@
+# Every option, set to its default unless noted.
+type: custom:light-pills-card
+name: Bedroom
+icon: mdi:bed-outline              # ignored when image is set
+# image: /local/bedroom.png
+show_icon: true
+show_count: false                  # true shows "1 of 3 on" under the name
+expand: single                     # single | on | always | never
+
+lights:                            # 2 to 4 entries
+  - entity: light.bedside
+    name: Bedside                  # optional, defaults to the friendly name
+    icon: mdi:lamp                 # optional, defaults to the entity icon
+    tap_action:
+      action: toggle               # default
+    hold_action:
+      action: more-info            # default
+  - light.hallway                  # shorthand: entity only
+  - entity: switch.fairy_lights    # switch, fan and input_boolean also work
+    name: Fairy
+
+# Name and icon area (does nothing by default)
+entity: sensor.bedroom_lights_on   # used by more-info
+tap_action:
+  action: navigate
+  navigation_path: /dashboard-home/bedroom
+hold_action:
+  action: none
+
+# Card appearance (numbers are treated as px)
+background: '#35425c'
+border_radius: 15px
+box_shadow: 'rgba(0, 0, 0, 0.35) 0px 5px 15px'
+border: none
+height: 70px
+padding: 0 12px 0 14px
+name_color: '#ffffff'
+name_font_size: 21px
+name_font_weight: 500
+name_letter_spacing: -0.9px
+image_size: 40px
+
+# Pill appearance
+pill_background: '#4B5975'
+pill_background_on: '#5a6a8a'      # default: same as pill_background
+pill_text_color: '#ffffff'
+pill_size: 42px
+pill_icon_size: 24px
+pill_radius: 13px
+pill_gap: 5px
+pill_font_size: 15px
+pill_font_weight: 600
+icon_color_on: '#FFD08A'
+icon_color_off: '#ffffff'
+icon_opacity_off: 0.6
+animation_duration: 0.25s
