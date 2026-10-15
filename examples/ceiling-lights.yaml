@@ -2,17 +2,17 @@
 # Everything not listed here uses the defaults, which match the original styling.
 type: custom:light-pills-card
 name: Ceiling Lights
-image: /local/officelampbulb.png
+image: /local/lightbulb.png
 lights:
-  - entity: light.office_desk_lamp
+  - entity: light.example_1
     name: TV
     icon: mdi:television
-  - entity: light.office_ceiling
+  - entity: light.example_2
     name: Sofa
     icon: mdi:sofa
-  - entity: light.garage_light_1
+  - entity: light.example_3
     name: Table
     icon: mdi:table-furniture
-  - entity: light.garage_light_2
+  - entity: light.example_4
     name: Fire
     icon: mdi:fireplace

@@ -63,10 +63,10 @@
     const states = {};
     const entity = (id, name, state = 'off') =>
       (states[id] = { entity_id: id, state, attributes: { friendly_name: name } });
-    entity('light.office_desk_lamp', 'Office desk lamp');
-    entity('light.office_ceiling', 'Office ceiling');
-    entity('light.garage_light_1', 'Garage light 1');
-    entity('light.garage_light_2', 'Garage light 2');
+    entity('light.example_1', 'Example 1');
+    entity('light.example_2', 'Example 2');
+    entity('light.example_3', 'Example 3');
+    entity('light.example_4', 'Example 4');
     entity('light.living_room', 'Living Room');
     entity('light.kitchen_island', 'Kitchen Island');
     entity('light.hallway', 'Hallway');
@@ -103,10 +103,10 @@
         name: 'Ceiling Lights',
         icon: 'mdi:lightbulb-group',
         lights: [
-          { entity: 'light.office_desk_lamp', name: 'TV', icon: 'mdi:television' },
-          { entity: 'light.office_ceiling', name: 'Sofa', icon: 'mdi:sofa' },
-          { entity: 'light.garage_light_1', name: 'Table', icon: 'mdi:table-furniture' },
-          { entity: 'light.garage_light_2', name: 'Fire', icon: 'mdi:fireplace' },
+          { entity: 'light.example_1', name: 'TV', icon: 'mdi:television' },
+          { entity: 'light.example_2', name: 'Sofa', icon: 'mdi:sofa' },
+          { entity: 'light.example_3', name: 'Table', icon: 'mdi:table-furniture' },
+          { entity: 'light.example_4', name: 'Fire', icon: 'mdi:fireplace' },
         ],
       },
       long: {

@@ -1,5 +1,5 @@
 {
-  "name": "light-pills-card",
+  "name": "ha-light-pills-card",
   "version": "1.0.0",
   "description": "Home Assistant Lovelace card with 2-4 light pills that expand to show their name",
   "license": "MIT",
@@ -10,5 +10,10 @@
   },
   "devDependencies": {
     "@mdi/js": "^7.4.47"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/pqpxo/ha-light-pills-card.git"
+  },
+  "homepage": "https://github.com/pqpxo/ha-light-pills-card"
 }

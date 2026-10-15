@@ -1,7 +1,7 @@
 /*!
  * Light Pills Card for Home Assistant
  * A compact room card with 2-4 light pills that expand to show their name.
- * https://github.com/pqpxo/light-pills-card | MIT licence
+ * https://github.com/pqpxo/ha-light-pills-card | MIT licence
  */
 
 const VERSION = '1.0.0';
@@ -853,7 +853,7 @@ if (!window.customCards.some((card) => card.type === CARD_TAG)) {
     name: 'Light Pills Card',
     description: 'A room card with 2-4 light pills that expand to show their name.',
     preview: true,
-    documentationURL: 'https://github.com/pqpxo/light-pills-card',
+    documentationURL: 'https://github.com/pqpxo/ha-light-pills-card',
   });
 }
 

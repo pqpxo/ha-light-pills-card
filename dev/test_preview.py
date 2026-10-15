@@ -63,7 +63,7 @@ with sync_playwright() as p:
     page.screenshot(path=f"{SHOTS}/01-all-off.png")
 
     # 2. Only TV on: TV grows to fit its label, others stay square
-    set_states(page, {"light.office_desk_lamp": "on"})
+    set_states(page, {"light.example_1": "on"})
     widths = pill_widths(page, "original")
     labels = label_widths(page, "original")
     expected_tv = 42 + labels[0]
@@ -73,7 +73,7 @@ with sync_playwright() as p:
     page.screenshot(path=f"{SHOTS}/02-tv-only.png")
 
     # 3. Second light on: original behaviour collapses both back to squares
-    set_states(page, {"light.office_ceiling": "on"})
+    set_states(page, {"light.example_2": "on"})
     widths = pill_widths(page, "original")
     check(widths == [42, 42, 42, 42], f"two on (single mode) -> all collapse {widths}")
     page.screenshot(path=f"{SHOTS}/03-two-on.png")
@@ -81,7 +81,7 @@ with sync_playwright() as p:
     # 4. Each name gets its own width
     results = {}
     for i, entity in enumerate(
-        ["light.office_desk_lamp", "light.office_ceiling", "light.garage_light_1", "light.garage_light_2"]
+        ["light.example_1", "light.example_2", "light.example_3", "light.example_4"]
     ):
         page.evaluate("() => window.allOff()")
         set_states(page, {entity: "on"})
@@ -140,7 +140,7 @@ with sync_playwright() as p:
     pill = page.locator("#original .pill").nth(3)
     pill.click()
     page.wait_for_timeout(SETTLE_MS)
-    state = page.evaluate("() => document.getElementById('original').hass.states['light.garage_light_2'].state")
+    state = page.evaluate("() => document.getElementById('original').hass.states['light.example_4'].state")
     check(state == "on", f"tap toggles light ({state})")
     page.screenshot(path=f"{SHOTS}/04-fire-tapped.png")
 
@@ -151,9 +151,9 @@ with sync_playwright() as p:
     page.mouse.up()
     page.wait_for_timeout(100)
     log = page.evaluate("() => window.actionLog")
-    check(log[-1] == {"action": "hold", "entity": "light.garage_light_2", "type": "more-info"}, f"hold -> more-info {log[-1]}")
+    check(log[-1] == {"action": "hold", "entity": "light.example_4", "type": "more-info"}, f"hold -> more-info {log[-1]}")
     check(sum(1 for e in log if e["action"] == "tap") == 1, "hold did not also fire a tap")
-    state = page.evaluate("() => document.getElementById('original').hass.states['light.garage_light_2'].state")
+    state = page.evaluate("() => document.getElementById('original').hass.states['light.example_4'].state")
     check(state == "on", "hold did not toggle the light")
 
     # 9. Config validation
@@ -184,7 +184,7 @@ with sync_playwright() as p:
     )
     check(rt["same"], "editor configToForm/formToConfig round trip is lossless")
     check(
-        rt["cleared"] == ["light.office_desk_lamp", "light.garage_light_1", "light.garage_light_2"],
+        rt["cleared"] == ["light.example_1", "light.example_3", "light.example_4"],
         f"clearing a light slot drops it {rt['cleared']}",
     )
 
@@ -222,7 +222,7 @@ with sync_playwright() as p:
 
     # 12. Showcase screenshot
     page.evaluate("() => window.allOff()")
-    set_states(page, {"light.office_desk_lamp": "on", "light.living_room": "on", "light.bedside": "on"})
+    set_states(page, {"light.example_1": "on", "light.living_room": "on", "light.bedside": "on"})
     page.locator(".grid").screenshot(path=f"{SHOTS}/05-showcase.png")
 
     check(not errors, f"no page errors {errors}")
