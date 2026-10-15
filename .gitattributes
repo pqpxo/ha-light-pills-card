@@ -1,0 +1,4 @@
+# Count the card itself; it lives in dist/ for HACS, which GitHub ignores by default
+dist/** linguist-vendored=false
+# Preview and build tooling, not part of the card
+dev/** linguist-documentation
