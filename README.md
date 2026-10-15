@@ -51,9 +51,9 @@ Prefer YAML? This is all you need:
 type: custom:light-pills-card
 name: Living Room
 lights:
-  - light.ceiling
-  - light.floor_lamp
-  - light.tv_backlight
+  - light.example_1
+  - light.example_2
+  - light.example_3
 ```
 
 Listing an entity on its own uses its friendly name and icon. To set them yourself:
