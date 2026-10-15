@@ -3,7 +3,6 @@
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 [![Release](https://img.shields.io/github/v/release/pqpxo/ha-light-pills-card)](https://github.com/pqpxo/ha-light-pills-card/releases/latest)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.8%2B-41BDF5.svg)](https://www.home-assistant.io/)
-[![Validate](https://github.com/pqpxo/ha-light-pills-card/actions/workflows/validate.yml/badge.svg)](https://github.com/pqpxo/ha-light-pills-card/actions/workflows/validate.yml)
 [![Licence](https://img.shields.io/github/license/pqpxo/ha-light-pills-card)](LICENSE)
 
 A compact room card for Home Assistant dashboards. Each card holds 2 to 4 light pills: tap one to toggle the light, and when a light is on its pill grows to show the name. The pills size themselves to fit their label, so "TV" and "Living Room" both look right without setting any widths.
