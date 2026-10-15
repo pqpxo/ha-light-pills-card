@@ -4,7 +4,7 @@
  * https://github.com/pqpxo/ha-light-pills-card | MIT licence
  */
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 const CARD_TAG = 'light-pills-card';
 const EDITOR_TAG = 'light-pills-card-editor';
 const MIN_LIGHTS = 2;
