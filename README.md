@@ -1,13 +1,23 @@
-# Light Pills Card
+<p align="center">
+  <img src="docs/logo.png" width="230" alt="Light Pills Card logo">
+</p>
 
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
-[![Release](https://img.shields.io/github/v/release/pqpxo/ha-light-pills-card)](https://github.com/pqpxo/ha-light-pills-card/releases/latest)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2024.8%2B-41BDF5.svg)](https://www.home-assistant.io/)
-[![Licence](https://img.shields.io/github/license/pqpxo/ha-light-pills-card)](LICENSE)
+<h1 align="center">Light Pills Card</h1>
 
-A compact room card for Home Assistant dashboards. Each card holds 2 to 4 light pills: tap one to toggle the light, and when a light is on its pill grows to show the name. The pills size themselves to fit their label, so "TV" and "Living Room" both look right without setting any widths.
+<p align="center">
+  A compact room card for Home Assistant dashboards. Each card holds 2 to 4 light pills: tap one to toggle the light, and when a light is on its pill grows to show the name. The pills size themselves to fit their label, so "TV" and "Living Room" both look right without setting any widths.
+</p>
 
-![Pills expanding and collapsing as lights are toggled](docs/demo.gif)
+<p align="center">
+  <a href="https://github.com/pqpxo/ha-light-pills-card/releases/latest"><img src="https://img.shields.io/github/v/release/pqpxo/ha-light-pills-card?style=flat-square&color=242e42" alt="Latest release"></a>
+  <a href="https://www.home-assistant.io/"><img src="https://img.shields.io/badge/Home%20Assistant-2024.8%2B-41BDF5?style=flat-square&logo=home-assistant&logoColor=white" alt="Home Assistant 2024.8 or newer"></a>
+  <a href="https://hacs.xyz/"><img src="https://img.shields.io/badge/HACS-Custom%20repository-41BDF5?style=flat-square" alt="HACS custom repository"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/github/license/pqpxo/ha-light-pills-card?style=flat-square" alt="MIT licence"></a>
+</p>
+
+<p align="center">
+  <img src="docs/demo.gif" width="600" alt="Pills expanding and collapsing as lights are toggled">
+</p>
 
 ## Features
 
@@ -252,6 +262,7 @@ npm install                     # icons for the local preview
 python3 -m http.server 8765     # then open http://localhost:8765/dev/preview.html
 python3 dev/test_preview.py     # headless checks (Playwright with Chromium)
 python3 dev/record_demo.py      # regenerate docs/demo.gif (needs ffmpeg)
+python3 dev/build_logo.py       # regenerate docs/logo.svg and docs/logo.png (needs Inter Display)
 ```
 
 The preview page stubs the few Home Assistant elements the card uses, so you can work on it without a running instance.
