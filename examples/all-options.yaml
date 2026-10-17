@@ -1,4 +1,4 @@
-# Every option, set to its default unless noted.
+# Every option. Styling defaults depend on appearance; see the README.
 type: custom:light-pills-card
 name: Bedroom
 icon: mdi:bed-outline              # ignored when image is set
@@ -6,17 +6,19 @@ icon: mdi:bed-outline              # ignored when image is set
 show_icon: true
 show_count: false                  # true shows "1 of 3 on" under the name
 expand: single                     # single | on | always | never
+appearance: theme                  # theme | classic (original dark navy)
+animation: true                    # false: instant changes, no tap ripple
 
-lights:                            # 2 to 4 entries
+lights:                            # 2 to 4 entities of any type
   - entity: light.bedside
     name: Bedside                  # optional, defaults to the friendly name
     icon: mdi:lamp                 # optional, defaults to the entity icon
     tap_action:
-      action: toggle               # default
+      action: toggle               # default for lights and switches
     hold_action:
       action: more-info            # default
   - light.hallway                  # shorthand: entity only
-  - entity: switch.fairy_lights    # switch, fan and input_boolean also work
+  - entity: switch.fairy_lights    # any entity works: switch, cover, lock, script...
     name: Fairy
 
 # Name and icon area (does nothing by default)
@@ -27,7 +29,8 @@ tap_action:
 hold_action:
   action: none
 
-# Card appearance (numbers are treated as px)
+# Card styling, shown with the classic values (numbers are treated as px).
+# Leave these out to use the defaults for your chosen appearance.
 background: '#35425c'
 border_radius: 15px
 box_shadow: 'rgba(0, 0, 0, 0.35) 0px 5px 15px'
@@ -42,7 +45,7 @@ image_size: 40px
 
 # Pill appearance
 pill_background: '#4B5975'
-pill_background_on: '#5a6a8a'      # default: same as pill_background
+pill_background_on: '#5a6a8a'
 pill_text_color: '#ffffff'
 pill_size: 42px
 pill_icon_size: 24px

@@ -1,7 +1,8 @@
 # The original button-card "Ceiling Lights" design, rebuilt with Light Pills Card.
-# Everything not listed here uses the defaults, which match the original styling.
+# appearance: classic reproduces the original navy styling.
 type: custom:light-pills-card
 name: Ceiling Lights
+appearance: classic
 image: /local/lightbulb.png
 lights:
   - entity: light.example_1

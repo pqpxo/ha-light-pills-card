@@ -21,12 +21,13 @@
 
 ## Features
 
-- 2 to 4 lights per card, each with its own entity, name, icon, tap action and hold action
-- Pills grow to exactly fit their label, with a smooth animation
-- Four expand modes, from "only when it's the only light on" to "always"
+- 2 to 4 pills per card, each with its own entity, name, icon, tap action and hold action
+- Works with any entity: lights, switches, fans, covers, locks, scripts and more
+- Follows your Home Assistant theme, light or dark, or use the original dark navy look
+- Pills grow to exactly fit their label, with a smooth animation that you can turn off
+- Four expand modes, from "only when it's the only one on" to "always"
 - Visual editor, so no YAML is needed
-- Colours, radius, shadow, sizes and fonts are all configurable, and theme variables work too
-- Works with `light`, `switch`, `fan` and `input_boolean` entities
+- Colours, radius, shadow, sizes and fonts are all configurable
 - One JavaScript file with no dependencies
 
 ## Installation
@@ -52,7 +53,7 @@ Or add it by hand:
 
 ## Quick start
 
-Edit a dashboard, add a card and search for **Light Pills**. Pick your lights in the editor and you're done.
+Edit a dashboard, add a card and search for **Light Pills**. Pick your entities in the editor and you're done.
 
 Prefer YAML? This is all you need:
 
@@ -100,7 +101,9 @@ Every option below is also available in the visual editor. [`examples/all-option
 | `show_icon` | `true` | Show the header icon or image |
 | `show_count` | `false` | Show "1 of 3 on" under the name |
 | `expand` | `single` | When pills show their name (see below) |
-| `lights` | **required** | 2 to 4 lights (see below) |
+| `appearance` | `theme` | `theme` follows your Home Assistant theme. `classic` is the original dark navy look |
+| `animation` | `true` | Set to `false` for instant changes with no movement or tap ripple |
+| `lights` | **required** | 2 to 4 entities (see below) |
 | `entity` | | Entity opened by a `more-info` action on the header |
 | `tap_action` | `none` | Action when tapping the name or icon |
 | `hold_action` | `none` | Action when holding the name or icon |
@@ -109,57 +112,110 @@ Every option below is also available in the visual editor. [`examples/all-option
 
 | `expand` | A pill shows its name when |
 | --- | --- |
-| `single` | it is on and it is the only light on |
+| `single` | it is on and it is the only one on |
 | `on` | it is on |
 | `always` | always |
 | `never` | never (icons only) |
 
 ### Lights
 
+Despite the name, `lights` takes any entity.
+
 | Option | Default | Description |
 | --- | --- | --- |
-| `entity` | **required** | A `light`, `switch`, `fan` or `input_boolean` entity |
+| `entity` | **required** | Any entity |
 | `name` | Friendly name | Text shown when the pill expands |
 | `icon` | Entity icon | Pill icon |
-| `tap_action` | `toggle` | Any Home Assistant [action](https://www.home-assistant.io/dashboards/actions/) |
+| `tap_action` | depends on the entity, see below | Any Home Assistant [action](https://www.home-assistant.io/dashboards/actions/) |
 | `hold_action` | `more-info` | Any Home Assistant action |
+
+### Which entities work
+
+Any entity can be a pill. A pill counts as "on" using the same rules as Home Assistant itself, so a cover is on when open and a lock is on when unlocked. Tapping does what you'd expect for that kind of entity:
+
+| Entity type | Counts as on when | Default tap action |
+| --- | --- | --- |
+| `light`, `switch`, `fan`, `input_boolean`, `group`, `automation`, `humidifier`, `siren`, `remote` | on | toggle |
+| `cover`, `valve` | not closed | open or close |
+| `script` | running | run or stop |
+| `scene`, `button`, `input_button` | never (they're momentary) | activate or press |
+| `lock` | unlocked | more-info, so a stray tap can't unlock a door |
+| `media_player`, `climate`, `vacuum` and anything else | active, as Home Assistant defines it | more-info |
+| `sensor`, `number`, `select` and other value entities | never | more-info |
+
+Set `tap_action` on a pill to change it, for example `tap_action: {action: toggle}` on a lock.
 
 ### Appearance
 
-Any CSS value works. Bare numbers are read as pixels, so `border_radius: 15` is the same as `border_radius: 15px`.
+`appearance: theme` (the default) styles the card like Home Assistant's own cards, so it follows your theme in light and dark mode. Pills use Home Assistant's state colours: amber for lights and switches, purple for covers, and so on. `appearance: classic` is the original dark navy design.
 
-| Option | Default |
-| --- | --- |
-| `background` | `#35425c` |
-| `border_radius` | `15px` |
-| `box_shadow` | `rgba(0, 0, 0, 0.35) 0px 5px 15px` |
-| `border` | `none` |
-| `height` | `70px` |
-| `padding` | `0 12px 0 14px` |
-| `name_color` | `#ffffff` |
-| `name_font_size` | `21px` |
-| `name_font_weight` | `500` |
-| `name_letter_spacing` | `-0.9px` |
-| `image_size` | `40px` |
-| `pill_background` | `#4B5975` |
-| `pill_background_on` | same as `pill_background` |
-| `pill_text_color` | `#ffffff` |
-| `pill_size` | `42px` |
-| `pill_icon_size` | `24px` |
-| `pill_radius` | `13px` |
-| `pill_gap` | `5px` |
-| `pill_font_size` | `15px` |
-| `pill_font_weight` | `600` |
-| `icon_color_on` | `#FFD08A` |
-| `icon_color_off` | `#ffffff` |
-| `icon_opacity_off` | `0.6` |
-| `animation_duration` | `0.25s` |
+Every option below overrides either look. Any CSS value works, and bare numbers are read as pixels, so `border_radius: 15` is the same as `border_radius: 15px`.
+
+| Option | `theme` default | `classic` default |
+| --- | --- | --- |
+| `background` | theme card background | `#35425c` |
+| `border_radius` | theme card radius | `15px` |
+| `box_shadow` | theme card shadow | `rgba(0, 0, 0, 0.35) 0px 5px 15px` |
+| `border` | theme card border | `none` |
+| `name_color` | theme text colour | `#ffffff` |
+| `pill_background` | faint tint of the text colour | `#4B5975` |
+| `pill_background_on` | tint of the icon colour | same as `pill_background` |
+| `pill_text_color` | theme text colour | `#ffffff` |
+| `icon_color_on` | Home Assistant state colour | `#FFD08A` |
+| `icon_color_off` | theme secondary text colour | `#ffffff` |
+| `icon_opacity_off` | `1` | `0.6` |
+| `height` | `70px` | `70px` |
+| `padding` | `0 12px 0 14px` | `0 12px 0 14px` |
+| `name_font_size` | `21px` | `21px` |
+| `name_font_weight` | `500` | `500` |
+| `name_letter_spacing` | `-0.9px` | `-0.9px` |
+| `image_size` | `40px` | `40px` |
+| `pill_size` | `42px` | `42px` |
+| `pill_icon_size` | `24px` | `24px` |
+| `pill_radius` | `13px` | `13px` |
+| `pill_gap` | `5px` | `5px` |
+| `pill_font_size` | `15px` | `15px` |
+| `pill_font_weight` | `600` | `600` |
+| `animation_duration` | `0.25s` | `0.25s` |
 
 `animation_duration` also takes a bare number. Up to 5 is read as seconds and anything larger as milliseconds.
 
+### Animation
+
+Set `animation: false` to turn off all movement: pills expand, collapse and change colour instantly, with no tap ripple. The card also turns off its transitions automatically when your device's "reduce motion" accessibility setting is on.
+
 ## Examples
 
-![Three example cards with different styles](docs/preview.png)
+![The card in Home Assistant's light and dark themes, plus the classic look](docs/preview.png)
+
+### Switches, covers and a lock
+
+```yaml
+type: custom:light-pills-card
+name: Living Room
+show_count: true
+lights:
+  - entity: light.example_1
+    name: Lamp
+  - entity: switch.example_2
+    name: Fairy lights
+    icon: mdi:string-lights
+  - entity: cover.example_3
+    name: Blinds
+  - entity: lock.example_4
+    name: Front door
+```
+
+### The original dark navy look
+
+```yaml
+type: custom:light-pills-card
+name: Ceiling Lights
+appearance: classic
+lights:
+  - light.example_1
+  - light.example_2
+```
 
 ### Custom colours with `expand: on`
 
@@ -181,23 +237,6 @@ lights:
     icon: mdi:lamp
   - entity: light.hallway
     icon: mdi:wall-sconce-flat
-```
-
-### Follow your Home Assistant theme
-
-```yaml
-type: custom:light-pills-card
-name: Kitchen
-background: var(--ha-card-background, var(--card-background-color))
-box_shadow: var(--ha-card-box-shadow, none)
-name_color: var(--primary-text-color)
-pill_background: var(--secondary-background-color)
-pill_text_color: var(--primary-text-color)
-icon_color_off: var(--primary-text-color)
-icon_color_on: var(--state-light-active-color, #FFD08A)
-lights:
-  - light.kitchen_ceiling
-  - light.kitchen_island
 ```
 
 ### Tap the header to turn everything off
@@ -243,6 +282,9 @@ If the pills ever need more room than the card has, such as four long names with
 **"Custom element doesn't exist: light-pills-card"**
 The browser hasn't loaded the file yet. Do a hard refresh. In the Companion app, clear the frontend cache from the app's settings. If it persists, check the resource is listed under **Settings > Dashboards > Resources** as a JavaScript module.
 
+**I want the old dark navy look back**
+Add `appearance: classic`, or pick **Classic** under **Appearance** in the editor. Version 1.1 made following your theme the default.
+
 **Pill names never appear**
 With the default `expand: single`, a name only shows while that light is the only one on. Use `expand: on` to show the name of every light that's on.
 
@@ -251,7 +293,7 @@ That entity doesn't exist or isn't loaded. Check the entity ID.
 
 ## Coming from button-card
 
-This card started life as a [button-card](https://github.com/custom-cards/button-card) design, and its defaults reproduce that look. [`examples/ceiling-lights.yaml`](examples/ceiling-lights.yaml) shows the conversion: the original 629 lines of YAML come down to 16, with no helper sensor and no per-pill pixel widths.
+This card started life as a [button-card](https://github.com/custom-cards/button-card) design, and `appearance: classic` reproduces that look. [`examples/ceiling-lights.yaml`](examples/ceiling-lights.yaml) shows the conversion: the original 629 lines of YAML come down to 17, with no helper sensor and no per-pill pixel widths.
 
 ## Development
 

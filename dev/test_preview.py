@@ -220,7 +220,55 @@ with sync_playwright() as p:
     page.locator("#narrow-wrap").screenshot(path=f"{SHOTS}/06-narrow-always.png")
     page.evaluate("() => document.getElementById('narrow-wrap').remove()")
 
-    # 12. Showcase screenshot
+    # 12. v1.1: any entity, appearance, animation toggle
+    r = page.evaluate(
+        """() => {
+            const C = customElements.get('light-pills-card');
+            const s = (entity_id, state) => ({ entity_id, state, attributes: {} });
+            const active = [
+                s('switch.a', 'on'), s('cover.a', 'open'), s('lock.a', 'unlocked'), s('climate.a', 'heat'),
+                s('media_player.a', 'playing'), s('fan.a', 'on')].map(C.isActive);
+            const inactive = [
+                s('switch.a', 'off'), s('cover.a', 'closed'), s('lock.a', 'locked'), s('light.a', 'unavailable'),
+                s('button.a', '2026-01-01'), s('sensor.a', '21.5'), s('scene.a', 'scening')].map(C.isActive);
+            const taps = ['light.a', 'switch.a', 'cover.a', 'script.a', 'lock.a', 'sensor.a', 'climate.a']
+                .map(C.defaultTapAction);
+            const make = (cfg) => { const c = document.createElement('light-pills-card');
+                c.setConfig({ lights: ['switch.a', 'light.b'], ...cfg }); return c.shadowRoot; };
+            const def = make({}), classic = make({ appearance: 'classic' }), still = make({ animation: false });
+            let bad = null;
+            try { make({ appearance: 'pink' }); } catch (e) { bad = e.message; }
+            const E = customElements.get('light-pills-card-editor');
+            const stripped = E.formToConfig({ ...E.configToForm({ type: 'x', lights: ['light.a', 'light.b'] }), type: 'x' });
+            const kept = E.formToConfig({ ...E.configToForm({ type: 'x', animation: false, appearance: 'classic',
+                lights: ['light.a', 'light.b'] }), type: 'x' });
+            return {
+                active, inactive, taps, bad, stripped, kept,
+                defClass: def.querySelector('ha-card').className,
+                classicClass: classic.querySelector('ha-card').className,
+                stillClass: still.querySelector('ha-card').className,
+                ripplesDefault: def.querySelectorAll('ha-ripple').length,
+                ripplesStill: still.querySelectorAll('ha-ripple').length,
+                domainColour: def.querySelector('.pill').style.getPropertyValue('--lpc-domain-color'),
+            };
+        }"""
+    )
+    check(all(r["active"]), f"isActive true for on/open/unlocked/heat/playing {r['active']}")
+    check(not any(r["inactive"]), f"isActive false for off/closed/locked/unavailable/button/sensor/scene {r['inactive']}")
+    check(r["taps"] == ["toggle", "toggle", "toggle", "toggle", "more-info", "more-info", "more-info"],
+          f"default tap action per domain {r['taps']}")
+    check(r["defClass"] == "preset-theme", f"theme appearance is the default ({r['defClass']})")
+    check(r["classicClass"] == "preset-classic", "appearance: classic applies the classic preset")
+    check("static" in r["stillClass"] and r["ripplesStill"] == 0 and r["ripplesDefault"] == 2,
+          "animation: false adds .static and removes the ripple")
+    check("--state-switch-active-color" in r["domainColour"], f"pill uses HA domain colour ({r['domainColour']})")
+    check(r["bad"] is not None, f"rejects unknown appearance: {r['bad']}")
+    check(r["stripped"] == {"type": "x", "lights": [{"entity": "light.a"}, {"entity": "light.b"}]},
+          f"editor doesn't write default values {r['stripped']}")
+    check(r["kept"].get("animation") is False and r["kept"].get("appearance") == "classic",
+          "editor keeps non-default animation and appearance")
+
+    # 13. Showcase screenshot
     page.evaluate("() => window.allOff()")
     set_states(page, {"light.example_1": "on", "light.living_room": "on", "light.bedside": "on"})
     page.locator(".grid").screenshot(path=f"{SHOTS}/05-showcase.png")

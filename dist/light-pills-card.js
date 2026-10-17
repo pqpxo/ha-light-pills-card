@@ -1,61 +1,173 @@
 /*!
  * Light Pills Card for Home Assistant
- * A compact room card with 2-4 light pills that expand to show their name.
+ * A compact room card with 2-4 pills for lights, switches and more.
+ * Pills expand to show their name, sized automatically.
  * https://github.com/pqpxo/ha-light-pills-card | MIT licence
  */
 
-const VERSION = '1.0.1';
+const VERSION = '1.1.0';
 const CARD_TAG = 'light-pills-card';
 const EDITOR_TAG = 'light-pills-card-editor';
 const MIN_LIGHTS = 2;
 const MAX_LIGHTS = 4;
-const TOGGLE_DOMAINS = ['light', 'switch', 'input_boolean', 'fan'];
 const EXPAND_MODES = ['single', 'on', 'always', 'never'];
+const APPEARANCES = ['theme', 'classic'];
 const HOLD_MS = 500;
 const MOVE_TOLERANCE = 10;
 
-/*
- * Styling options. Each maps to a CSS custom property set on the card host,
- * so card-mod users can also override them as variables.
- * Defaults reproduce the original button-card design.
- */
-const STYLE_OPTIONS = {
-  background: ['--lpc-background', '#35425c'],
-  border_radius: ['--lpc-border-radius', '15px'],
-  box_shadow: ['--lpc-box-shadow', 'rgba(0, 0, 0, 0.35) 0px 5px 15px'],
-  border: ['--lpc-border', 'none'],
-  height: ['--lpc-height', '70px'],
-  padding: ['--lpc-padding', '0 12px 0 14px'],
-  name_color: ['--lpc-name-color', '#ffffff'],
-  name_font_size: ['--lpc-name-font-size', '21px'],
-  name_font_weight: ['--lpc-name-font-weight', '500'],
-  name_letter_spacing: ['--lpc-name-letter-spacing', '-0.9px'],
-  image_size: ['--lpc-image-size', '40px'],
-  pill_size: ['--lpc-pill-size', '42px'],
-  pill_icon_size: ['--lpc-pill-icon-size', '24px'],
-  pill_radius: ['--lpc-pill-radius', '13px'],
-  pill_gap: ['--lpc-pill-gap', '5px'],
-  pill_background: ['--lpc-pill-background', '#4B5975'],
-  pill_background_on: ['--lpc-pill-background-on', null],
-  pill_text_color: ['--lpc-pill-text-color', '#ffffff'],
-  pill_font_size: ['--lpc-pill-font-size', '15px'],
-  pill_font_weight: ['--lpc-pill-font-weight', '600'],
-  icon_color_on: ['--lpc-icon-color-on', '#FFD08A'],
-  icon_color_off: ['--lpc-icon-color-off', '#ffffff'],
-  icon_opacity_off: ['--lpc-icon-opacity-off', '0.6'],
-  animation_duration: ['--lpc-animation-duration', '0.25s'],
-};
+/* ----------------------------------------------------------------------
+ * Entities
+ * -------------------------------------------------------------------- */
+
+/** Domains where tapping toggles by default. Everything else opens more-info. */
+const TAP_TOGGLE_DOMAINS = new Set([
+  'light', 'switch', 'fan', 'input_boolean', 'group', 'automation', 'humidifier',
+  'siren', 'valve', 'cover', 'remote', 'script', 'scene', 'button', 'input_button',
+]);
+
+/** Momentary or value-only domains never count as "on". */
+const NEVER_ACTIVE_DOMAINS = new Set([
+  'button', 'input_button', 'scene', 'event', 'sensor', 'number', 'input_number',
+  'select', 'input_select', 'text', 'input_text', 'input_datetime', 'datetime',
+  'date', 'time', 'counter', 'weather', 'sun', 'zone', 'image', 'tag',
+]);
+
+const domainOf = (entityId) => String(entityId || '').split('.')[0];
+
+/** Whether an entity is "on", following Home Assistant's own rules per domain. */
+function isActive(stateObj) {
+  if (!stateObj) return false;
+  const domain = domainOf(stateObj.entity_id);
+  const { state } = stateObj;
+  if (state === 'unavailable' || state === 'unknown') return false;
+  if (NEVER_ACTIVE_DOMAINS.has(domain)) return false;
+  if (state === 'off' && domain !== 'alert') return false;
+  switch (domain) {
+    case 'alarm_control_panel':
+      return state !== 'disarmed';
+    case 'alert':
+      return state !== 'idle';
+    case 'cover':
+    case 'valve':
+      return state !== 'closed';
+    case 'device_tracker':
+    case 'person':
+      return state !== 'not_home';
+    case 'lawn_mower':
+      return state === 'mowing' || state === 'error';
+    case 'lock':
+      return state !== 'locked';
+    case 'media_player':
+      return state !== 'standby';
+    case 'vacuum':
+      return !['idle', 'docked', 'paused'].includes(state);
+    case 'plant':
+      return state === 'problem';
+    case 'group':
+      return ['on', 'home', 'open', 'locked', 'problem'].includes(state);
+    case 'timer':
+      return state === 'active';
+    case 'camera':
+      return state === 'streaming';
+    default:
+      return true;
+  }
+}
+
+function defaultTapAction(entityId) {
+  return !entityId || TAP_TOGGLE_DOMAINS.has(domainOf(entityId)) ? 'toggle' : 'more-info';
+}
+
+/* ----------------------------------------------------------------------
+ * Styling
+ *
+ * Each styling option maps to a CSS custom property (--lpc-<option>) that the
+ * card sets on its host, so themes and card-mod can set them too. When an
+ * option isn't set, the active appearance supplies a default through a
+ * matching --lpc-d-<option> property.
+ * -------------------------------------------------------------------- */
+
+const STYLE_OPTIONS = [
+  'background', 'border_radius', 'box_shadow', 'border', 'height', 'padding',
+  'name_color', 'name_font_size', 'name_font_weight', 'name_letter_spacing', 'image_size',
+  'pill_size', 'pill_icon_size', 'pill_radius', 'pill_gap', 'pill_background',
+  'pill_background_on', 'pill_text_color', 'pill_font_size', 'pill_font_weight',
+  'icon_color_on', 'icon_color_off', 'icon_opacity_off', 'animation_duration',
+];
 const UNITLESS = new Set(['name_font_weight', 'pill_font_weight', 'icon_opacity_off']);
 
-const DEFAULT_ACTIONS = {
-  light: { tap_action: { action: 'toggle' }, hold_action: { action: 'more-info' } },
-  card: { tap_action: { action: 'none' }, hold_action: { action: 'none' } },
+const kebab = (option) => option.replace(/_/g, '-');
+const cssVar = (option) => `--lpc-${kebab(option)}`;
+/** `var(--lpc-x, var(--lpc-d-x))` for use in the stylesheet. */
+const v = (option) => `var(${cssVar(option)}, var(--lpc-d-${kebab(option)}))`;
+
+const SHARED_DEFAULTS = {
+  height: '70px',
+  padding: '0 12px 0 14px',
+  name_font_size: '21px',
+  name_font_weight: '500',
+  name_letter_spacing: '-0.9px',
+  image_size: '40px',
+  pill_size: '42px',
+  pill_icon_size: '24px',
+  pill_radius: '13px',
+  pill_gap: '5px',
+  pill_font_size: '15px',
+  pill_font_weight: '600',
+  animation_duration: '0.25s',
 };
 
-/** `var(--lpc-x, default)` for use in the stylesheet. */
-const v = (option) => {
-  const [prop, fallback] = STYLE_OPTIONS[option];
-  return `var(${prop}, ${fallback})`;
+const PRESETS = {
+  // Follows the Home Assistant theme, light or dark, like the built-in cards
+  theme: {
+    ...SHARED_DEFAULTS,
+    background: 'var(--ha-card-background, var(--card-background-color, #fff))',
+    border_radius: 'var(--ha-card-border-radius, 12px)',
+    box_shadow: 'var(--ha-card-box-shadow, none)',
+    border: 'var(--ha-card-border-width, 1px) solid var(--ha-card-border-color, var(--divider-color, #e0e0e0))',
+    name_color: 'var(--primary-text-color, #212121)',
+    pill_background: 'rgba(var(--rgb-primary-text-color, 33, 33, 33), 0.07)',
+    pill_background_on: `color-mix(in srgb, ${v('icon_color_on')} 22%, transparent)`,
+    pill_text_color: 'var(--primary-text-color, #212121)',
+    // Each pill sets --lpc-domain-color to Home Assistant's colour for its domain
+    icon_color_on: 'var(--lpc-domain-color, var(--state-light-active-color, var(--state-active-color, #ffc107)))',
+    icon_color_off: 'var(--secondary-text-color, #727272)',
+    icon_opacity_off: '1',
+  },
+  // The original dark navy design
+  classic: {
+    ...SHARED_DEFAULTS,
+    background: '#35425c',
+    border_radius: '15px',
+    box_shadow: 'rgba(0, 0, 0, 0.35) 0px 5px 15px',
+    border: 'none',
+    name_color: '#ffffff',
+    pill_background: '#4B5975',
+    pill_background_on: v('pill_background'),
+    pill_text_color: '#ffffff',
+    icon_color_on: '#FFD08A',
+    icon_color_off: '#ffffff',
+    icon_opacity_off: '0.6',
+  },
+};
+
+/** Plain-English defaults for the editor's helper text. */
+const DEFAULT_HELP = {
+  theme: {
+    background: 'theme card background',
+    border_radius: 'theme card radius',
+    box_shadow: 'theme card shadow',
+    border: 'theme card border',
+    name_color: 'theme text colour',
+    pill_background: 'faint tint of the text colour',
+    pill_background_on: 'tint of the icon colour',
+    pill_text_color: 'theme text colour',
+    icon_color_on: 'Home Assistant state colour, amber for lights',
+    icon_color_off: 'theme secondary text colour',
+  },
+  classic: {
+    pill_background_on: 'same as pill background',
+  },
 };
 
 /** Turn a YAML value into a CSS value: bare numbers become px (or s/ms for durations). */
@@ -72,6 +184,13 @@ function normaliseLight(light) {
   return light && typeof light === 'object' ? { ...light } : {};
 }
 
+/** YAML 1.1 (YAML-mode dashboards) reads a bare `on` as true and `off` as false. */
+function normaliseExpand(expand) {
+  if (expand === true) return 'on';
+  if (expand === false) return 'never';
+  return expand;
+}
+
 function fireEvent(node, type, detail) {
   const event = new Event(type, { bubbles: true, composed: true, cancelable: false });
   event.detail = detail;
@@ -79,10 +198,30 @@ function fireEvent(node, type, detail) {
   return event;
 }
 
+function presetBlock(name) {
+  const decls = Object.entries(PRESETS[name])
+    .map(([option, value]) => `--lpc-d-${kebab(option)}: ${value};`)
+    .join('\n    ');
+  // Declared on the pills as well, so per-pill values (the domain colour) resolve per pill
+  return `ha-card.preset-${name},\n  ha-card.preset-${name} .pill {\n    ${decls}\n  }`;
+}
+
 const STYLES = `
   :host {
     display: block;
   }
+  ${presetBlock('theme')}
+  ${presetBlock('classic')}
+  @supports not (background: color-mix(in srgb, red 50%, blue)) {
+    ha-card.preset-theme,
+    ha-card.preset-theme .pill {
+      --lpc-d-pill-background-on: rgba(var(--rgb-primary-text-color, 33, 33, 33), 0.14);
+    }
+  }
+  ha-card.preset-classic .pill {
+    --ha-ripple-color: #ffffff;
+  }
+
   ha-card {
     background: ${v('background')};
     border-radius: ${v('border_radius')};
@@ -99,10 +238,9 @@ const STYLES = `
     padding: ${v('padding')};
   }
 
-  /* Header: icon/image, name and optional count */
   /*
-   * Header takes whatever the pills leave. If the pills need more room than
-   * the card has, the name truncates first, then the pill labels.
+   * Header: icon/image, name and optional count. It takes whatever the pills
+   * leave, so if space runs out the name truncates first, then the pill labels.
    */
   .header {
     display: flex;
@@ -217,7 +355,7 @@ const STYLES = `
       opacity ${v('animation_duration')} ease;
   }
   .pill.on {
-    background-color: var(--lpc-pill-background-on, ${v('pill_background')});
+    background-color: ${v('pill_background_on')};
   }
   .pill.expanded {
     grid-template-columns: ${v('pill_icon_size')} 1fr;
@@ -277,9 +415,22 @@ const STYLES = `
     opacity: 0.9;
   }
 
-  /* No animation on first paint, so pills don't grow when the dashboard loads */
-  .no-anim, .no-anim * {
+  /*
+   * Motion. No transitions on first paint (so pills don't grow when the
+   * dashboard loads), with animation: false, or when the device asks for
+   * reduced motion.
+   */
+  .no-anim,
+  .no-anim *,
+  ha-card.static,
+  ha-card.static * {
     transition: none !important;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    ha-card,
+    ha-card * {
+      transition: none !important;
+    }
   }
 `;
 
@@ -299,10 +450,11 @@ class LightPillsCard extends HTMLElement {
   }
 
   static getStubConfig(hass) {
-    const states = hass && hass.states ? Object.keys(hass.states) : [];
-    const lights = states.filter((e) => e.startsWith('light.')).slice(0, 3);
-    while (lights.length < MIN_LIGHTS) lights.push(`light.example_${lights.length + 1}`);
-    return { name: 'Lights', lights: lights.map((entity) => ({ entity })) };
+    const ids = hass && hass.states ? Object.keys(hass.states) : [];
+    const preferred = ['light', 'switch', 'fan', 'input_boolean'];
+    const picks = preferred.flatMap((domain) => ids.filter((id) => domainOf(id) === domain)).slice(0, 3);
+    while (picks.length < MIN_LIGHTS) picks.push(`light.example_${picks.length + 1}`);
+    return { name: 'Lights', lights: picks.map((entity) => ({ entity })) };
   }
 
   setConfig(config) {
@@ -310,22 +462,30 @@ class LightPillsCard extends HTMLElement {
 
     const lights = Array.isArray(config.lights) ? config.lights.map(normaliseLight) : [];
     if (lights.length < MIN_LIGHTS || lights.length > MAX_LIGHTS) {
-      throw new Error(`Add between ${MIN_LIGHTS} and ${MAX_LIGHTS} lights under "lights:" (found ${lights.length}).`);
+      throw new Error(`Add between ${MIN_LIGHTS} and ${MAX_LIGHTS} entities under "lights:" (found ${lights.length}).`);
     }
     lights.forEach((light, i) => {
       if (!light.entity || typeof light.entity !== 'string') {
-        throw new Error(`Light ${i + 1} needs an "entity".`);
+        throw new Error(`Pill ${i + 1} needs an "entity".`);
       }
     });
-    // YAML 1.1 (YAML-mode dashboards) reads a bare `on` as true and `off` as false
-    let expand = config.expand;
-    if (expand === true) expand = 'on';
-    if (expand === false) expand = 'never';
+    const expand = normaliseExpand(config.expand);
     if (expand !== undefined && !EXPAND_MODES.includes(expand)) {
       throw new Error(`"expand" must be one of: ${EXPAND_MODES.join(', ')}.`);
     }
+    if (config.appearance !== undefined && !APPEARANCES.includes(config.appearance)) {
+      throw new Error(`"appearance" must be one of: ${APPEARANCES.join(', ')}.`);
+    }
 
-    this._config = { show_icon: true, show_count: false, ...config, expand: expand || 'single', lights };
+    this._config = {
+      show_icon: true,
+      show_count: false,
+      animation: true,
+      ...config,
+      appearance: config.appearance || 'theme',
+      expand: expand || 'single',
+      lights,
+    };
     this._lastStates.clear();
     this._applyStyleVars();
     this._build();
@@ -355,20 +515,21 @@ class LightPillsCard extends HTMLElement {
   _applyStyleVars() {
     this._appliedVars.forEach((prop) => this.style.removeProperty(prop));
     this._appliedVars = [];
-    Object.entries(STYLE_OPTIONS).forEach(([option, [prop]]) => {
+    STYLE_OPTIONS.forEach((option) => {
       const value = this._config[option];
       if (value === undefined || value === null || value === '') return;
-      this.style.setProperty(prop, toCss(option, value));
-      this._appliedVars.push(prop);
+      this.style.setProperty(cssVar(option), toCss(option, value));
+      this._appliedVars.push(cssVar(option));
     });
   }
 
   _build() {
     const c = this._config;
+    const animated = c.animation !== false;
     const root = this.shadowRoot;
     root.innerHTML = `
       <style>${STYLES}</style>
-      <ha-card>
+      <ha-card class="preset-${c.appearance}${animated ? '' : ' static'}">
         <div class="row no-anim">
           <div class="header">
             <div class="media"></div>
@@ -418,19 +579,25 @@ class LightPillsCard extends HTMLElement {
       this._header.tabIndex = 0;
       this._bindActions(this._header, () => ({
         entity: c.entity,
-        tap_action: c.tap_action || DEFAULT_ACTIONS.card.tap_action,
-        hold_action: c.hold_action || DEFAULT_ACTIONS.card.hold_action,
+        tap_action: c.tap_action || { action: 'none' },
+        hold_action: c.hold_action || { action: 'none' },
       }));
     }
 
     // Pills
     const pillsEl = root.querySelector('.pills');
     this._pills = c.lights.map((light) => {
+      const domain = domainOf(light.entity);
       const button = document.createElement('button');
       button.className = 'pill';
       button.type = 'button';
+      // Home Assistant's state colour for this domain, used by the theme appearance
+      button.style.setProperty(
+        '--lpc-domain-color',
+        `var(--state-${domain}-active-color, var(--state-active-color, #ffc107))`,
+      );
       button.innerHTML = `
-        <ha-ripple></ha-ripple>
+        ${animated ? '<ha-ripple></ha-ripple>' : ''}
         <ha-state-icon class="icon"></ha-state-icon>
         <span class="label-wrap"><span class="label"></span></span>
       `;
@@ -439,13 +606,13 @@ class LightPillsCard extends HTMLElement {
 
       this._bindActions(button, () => ({
         entity: light.entity,
-        tap_action: light.tap_action || DEFAULT_ACTIONS.light.tap_action,
-        hold_action: light.hold_action || DEFAULT_ACTIONS.light.hold_action,
+        tap_action: light.tap_action || { action: defaultTapAction(light.entity) },
+        hold_action: light.hold_action || { action: 'more-info' },
         double_tap_action: { action: 'none' },
       }));
 
       pillsEl.appendChild(button);
-      return { light, button, icon, label, name: null, classes: '' };
+      return { light, button, icon, label, name: null };
     });
   }
 
@@ -461,13 +628,12 @@ class LightPillsCard extends HTMLElement {
     watched.forEach((e) => this._lastStates.set(e, hass.states[e]));
 
     const stateObjs = c.lights.map((l) => hass.states[l.entity]);
-    const isOn = (s) => !!s && s.state === 'on';
-    const onCount = stateObjs.filter(isOn).length;
-    const mode = c.expand || 'single';
+    const onCount = stateObjs.filter(isActive).length;
+    const mode = c.expand;
 
     this._pills.forEach((pill, i) => {
       const stateObj = stateObjs[i];
-      const on = isOn(stateObj);
+      const on = isActive(stateObj);
       const unavailable = !stateObj || stateObj.state === 'unavailable';
 
       const name = pill.light.name ?? (stateObj && stateObj.attributes.friendly_name) ?? pill.light.entity;
@@ -582,9 +748,11 @@ const LABELS = {
   name: 'Card name',
   icon: 'Icon',
   image: 'Image URL (overrides icon, e.g. /local/bulb.png)',
+  appearance: 'Appearance',
+  expand: 'Show name',
   show_icon: 'Show icon / image',
-  show_count: 'Show "x of y on" under the name',
-  expand: 'Show light name',
+  show_count: 'Show "x of y on"',
+  animation: 'Animate pills',
   entity: 'Entity',
   tap_action: 'Tap action',
   hold_action: 'Hold action',
@@ -614,17 +782,26 @@ const LABELS = {
   animation_duration: 'Animation duration',
 };
 
+/** Shown in the editor when unset; stripped again on save to keep YAML short. */
+const EDITOR_DEFAULTS = {
+  appearance: 'theme',
+  expand: 'single',
+  show_icon: true,
+  show_count: false,
+  animation: true,
+};
+
 const text = (name) => ({ name, selector: { text: {} } });
 
-function lightSchema(n) {
+function lightSchema(n, entity) {
   const required = n <= MIN_LIGHTS;
   return {
     name: `light_${n}`,
     type: 'expandable',
-    title: required ? `Light ${n}` : `Light ${n} (optional)`,
+    title: required ? `Pill ${n}` : `Pill ${n} (optional)`,
     icon: 'mdi:lightbulb-outline',
     schema: [
-      { name: 'entity', required, selector: { entity: { filter: { domain: TOGGLE_DOMAINS } } } },
+      { name: 'entity', required, selector: { entity: {} } },
       {
         name: '',
         type: 'grid',
@@ -633,109 +810,133 @@ function lightSchema(n) {
           { name: 'icon', selector: { icon: {} }, context: { icon_entity: 'entity' } },
         ],
       },
-      { name: 'tap_action', selector: { ui_action: { default_action: 'toggle' } } },
+      { name: 'tap_action', selector: { ui_action: { default_action: defaultTapAction(entity) } } },
       { name: 'hold_action', selector: { ui_action: { default_action: 'more-info' } } },
     ],
   };
 }
 
-const EDITOR_SCHEMA = [
-  text('name'),
-  {
-    name: '',
-    type: 'grid',
-    schema: [{ name: 'icon', selector: { icon: {} } }, text('image')],
-  },
-  {
-    name: 'expand',
-    selector: {
-      select: {
-        mode: 'dropdown',
-        options: [
-          { value: 'single', label: 'When it is the only light on' },
-          { value: 'on', label: 'Whenever it is on' },
-          { value: 'always', label: 'Always' },
-          { value: 'never', label: 'Never (icons only)' },
-        ],
+function buildSchema(config) {
+  const lights = (config.lights || []).map(normaliseLight);
+  return [
+    text('name'),
+    {
+      name: '',
+      type: 'grid',
+      schema: [{ name: 'icon', selector: { icon: {} } }, text('image')],
+    },
+    {
+      name: 'appearance',
+      selector: {
+        select: {
+          mode: 'dropdown',
+          options: [
+            { value: 'theme', label: 'Follow Home Assistant theme' },
+            { value: 'classic', label: 'Classic (dark navy)' },
+          ],
+        },
       },
     },
-  },
-  {
-    name: '',
-    type: 'grid',
-    schema: [
-      { name: 'show_icon', selector: { boolean: {} } },
-      { name: 'show_count', selector: { boolean: {} } },
-    ],
-  },
-  ...Array.from({ length: MAX_LIGHTS }, (_, i) => lightSchema(i + 1)),
-  {
-    name: 'card_appearance',
-    type: 'expandable',
-    flatten: true,
-    title: 'Card appearance',
-    icon: 'mdi:palette-outline',
-    schema: [
-      {
-        name: '',
-        type: 'grid',
-        schema: [
-          text('background'),
-          text('name_color'),
-          text('border_radius'),
-          text('border'),
-          text('height'),
-          text('padding'),
-          text('name_font_size'),
-          { name: 'name_font_weight', selector: { number: { min: 100, max: 900, step: 100, mode: 'box' } } },
-          text('name_letter_spacing'),
-          text('image_size'),
-        ],
+    {
+      name: 'expand',
+      selector: {
+        select: {
+          mode: 'dropdown',
+          options: [
+            { value: 'single', label: "When it's the only one on" },
+            { value: 'on', label: 'Whenever it is on' },
+            { value: 'always', label: 'Always' },
+            { value: 'never', label: 'Never (icons only)' },
+          ],
+        },
       },
-      text('box_shadow'),
-    ],
-  },
-  {
-    name: 'pill_appearance',
-    type: 'expandable',
-    flatten: true,
-    title: 'Pill appearance',
-    icon: 'mdi:pill',
-    schema: [
-      {
-        name: '',
-        type: 'grid',
-        schema: [
-          text('pill_background'),
-          text('pill_background_on'),
-          text('icon_color_on'),
-          text('icon_color_off'),
-          text('pill_text_color'),
-          { name: 'icon_opacity_off', selector: { number: { min: 0, max: 1, step: 0.05, mode: 'slider' } } },
-          text('pill_size'),
-          text('pill_icon_size'),
-          text('pill_radius'),
-          text('pill_gap'),
-          text('pill_font_size'),
-          { name: 'pill_font_weight', selector: { number: { min: 100, max: 900, step: 100, mode: 'box' } } },
-          text('animation_duration'),
-        ],
-      },
-    ],
-  },
-  {
-    name: 'card_interactions',
-    type: 'expandable',
-    flatten: true,
-    title: 'Card interactions (name and icon area)',
-    icon: 'mdi:gesture-tap',
-    schema: [
-      { name: 'entity', selector: { entity: {} } },
-      { name: 'tap_action', selector: { ui_action: { default_action: 'none' } } },
-      { name: 'hold_action', selector: { ui_action: { default_action: 'none' } } },
-    ],
-  },
-];
+    },
+    {
+      name: '',
+      type: 'grid',
+      schema: [
+        { name: 'show_icon', selector: { boolean: {} } },
+        { name: 'show_count', selector: { boolean: {} } },
+        { name: 'animation', selector: { boolean: {} } },
+      ],
+    },
+    ...Array.from({ length: MAX_LIGHTS }, (_, i) => lightSchema(i + 1, lights[i] && lights[i].entity)),
+    {
+      name: 'card_appearance',
+      type: 'expandable',
+      flatten: true,
+      title: 'Card styling',
+      icon: 'mdi:palette-outline',
+      schema: [
+        {
+          name: '',
+          type: 'grid',
+          schema: [
+            text('background'),
+            text('name_color'),
+            text('border_radius'),
+            text('border'),
+            text('height'),
+            text('padding'),
+            text('name_font_size'),
+            { name: 'name_font_weight', selector: { number: { min: 100, max: 900, step: 100, mode: 'box' } } },
+            text('name_letter_spacing'),
+            text('image_size'),
+          ],
+        },
+        text('box_shadow'),
+      ],
+    },
+    {
+      name: 'pill_appearance',
+      type: 'expandable',
+      flatten: true,
+      title: 'Pill styling',
+      icon: 'mdi:pill',
+      schema: [
+        {
+          name: '',
+          type: 'grid',
+          schema: [
+            text('pill_background'),
+            text('pill_background_on'),
+            text('icon_color_on'),
+            text('icon_color_off'),
+            text('pill_text_color'),
+            { name: 'icon_opacity_off', selector: { number: { min: 0, max: 1, step: 0.05, mode: 'slider' } } },
+            text('pill_size'),
+            text('pill_icon_size'),
+            text('pill_radius'),
+            text('pill_gap'),
+            text('pill_font_size'),
+            { name: 'pill_font_weight', selector: { number: { min: 100, max: 900, step: 100, mode: 'box' } } },
+            text('animation_duration'),
+          ],
+        },
+      ],
+    },
+    {
+      name: 'card_interactions',
+      type: 'expandable',
+      flatten: true,
+      title: 'Card interactions (name and icon area)',
+      icon: 'mdi:gesture-tap',
+      schema: [
+        { name: 'entity', selector: { entity: {} } },
+        { name: 'tap_action', selector: { ui_action: { default_action: 'none' } } },
+        { name: 'hold_action', selector: { ui_action: { default_action: 'none' } } },
+      ],
+    },
+  ];
+}
+
+function helperText(name, appearance) {
+  if (name === 'animation') return 'Off: pills change instantly, with no tap ripple';
+  if (!STYLE_OPTIONS.includes(name)) return undefined;
+  const preset = APPEARANCES.includes(appearance) ? appearance : 'theme';
+  const help = DEFAULT_HELP[preset][name] || PRESETS[preset][name];
+  return `Default: ${help}`;
+}
 
 const isEmpty = (val) => val === undefined || val === null || val === '';
 
@@ -750,19 +951,20 @@ function stripEmpty(obj) {
 /** Card config -> ha-form data (lights array flattened into light_1..light_4). */
 function configToForm(config) {
   const { lights = [], ...rest } = config;
-  const data = { ...rest };
+  const data = { ...EDITOR_DEFAULTS, ...stripEmpty(rest) };
+  data.expand = normaliseExpand(data.expand);
   for (let i = 0; i < MAX_LIGHTS; i += 1) {
     data[`light_${i + 1}`] = normaliseLight(lights[i]);
   }
   return data;
 }
 
-/** ha-form data -> card config. Empty light slots are dropped. */
+/** ha-form data -> card config. Empty light slots and default values are dropped. */
 function formToConfig(data) {
   const lightKeys = Array.from({ length: MAX_LIGHTS }, (_, i) => `light_${i + 1}`);
   const rest = {};
   Object.entries(data).forEach(([key, val]) => {
-    if (!lightKeys.includes(key)) rest[key] = val;
+    if (!lightKeys.includes(key) && EDITOR_DEFAULTS[key] !== val) rest[key] = val;
   });
   const lights = lightKeys
     .map((key) => stripEmpty(data[key] || {}))
@@ -797,6 +999,7 @@ class LightPillsCardEditor extends HTMLElement {
     this._config = null;
     this._hass = null;
     this._form = null;
+    this._schemaKey = null;
   }
 
   setConfig(config) {
@@ -817,17 +1020,18 @@ class LightPillsCardEditor extends HTMLElement {
     if (!this._config || !customElements.get('ha-form')) return;
     if (!this._form) {
       this._form = document.createElement('ha-form');
-      this._form.schema = EDITOR_SCHEMA;
       // Nested ha-forms receive the same schema objects, so a schema-level label wins
       this._form.computeLabel = (schema) => schema.label || LABELS[schema.name] || schema.name;
-      this._form.computeHelper = (schema) => {
-        const opt = STYLE_OPTIONS[schema.name];
-        if (!opt) return undefined;
-        if (schema.name === 'pill_background_on') return 'Default: same as pill background';
-        return `Default: ${opt[1]}`;
-      };
+      this._form.computeHelper = (schema) => helperText(schema.name, this._config && this._config.appearance);
       this._form.addEventListener('value-changed', (ev) => this._valueChanged(ev));
       this.appendChild(this._form);
+    }
+    // The schema depends on the chosen entities (default tap action per domain)
+    const lights = (this._config.lights || []).map(normaliseLight);
+    const key = lights.map((l) => domainOf(l.entity)).join(',');
+    if (key !== this._schemaKey) {
+      this._form.schema = buildSchema(this._config);
+      this._schemaKey = key;
     }
     this._form.hass = this._hass;
     this._form.data = configToForm(this._config);
@@ -851,14 +1055,16 @@ if (!window.customCards.some((card) => card.type === CARD_TAG)) {
   window.customCards.push({
     type: CARD_TAG,
     name: 'Light Pills Card',
-    description: 'A room card with 2-4 light pills that expand to show their name.',
+    description: 'A room card with 2-4 pills for lights, switches and more. Pills expand to show their name.',
     preview: true,
     documentationURL: 'https://github.com/pqpxo/ha-light-pills-card',
   });
 }
 
-// Exposed for tests and for other cards that want to reuse the config mapping
+// Exposed for tests and for other cards that want to reuse them
 LightPillsCard.version = VERSION;
+LightPillsCard.isActive = isActive;
+LightPillsCard.defaultTapAction = defaultTapAction;
 LightPillsCardEditor.configToForm = configToForm;
 LightPillsCardEditor.formToConfig = formToConfig;
 
